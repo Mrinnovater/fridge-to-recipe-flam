@@ -8,9 +8,11 @@ A production-ready full-stack culinary assistant that transforms arbitrary pantr
 
 - [x] **React with Hooks**: Functional component architecture utilizing `useState`, `useEffect`, `useCallback`, and `useRef`.
 - [x] **Free-Form Text Input**: Accepts natural language input of pantry items, portions, and dietary preferences without rigid input forms.
-- [x] **LLM Integration (Gemini Flash)**: Integrated with Google Gemini Flash using zero-thinking budget and strict JSON response schemas for deterministic output.
+- [x] **LLM Integration (Gemini Flash)**: Integrated with Google Gemini (`gemini-3.5-flash-lite`) using strict JSON schemas for sub-second deterministic output.
+- [x] **Model Normalization & Fallback**: Automatically normalizes legacy/deprecated model names (`gemini-1.5-flash`, `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-3.5-flash`) to `gemini-3.5-flash-lite`, with auto-fallback to `gemini-flash-lite-latest` on 404/503 capacity spikes.
+- [x] **Pre-Validation Payload Sanitizer**: Sanitizes LLM outputs (repairing underscore IDs like `ing_1` → `ing-1`, clearing `displayText` on numeric items, reconciling tokens) prior to Zod validation to eliminate false schema rejections.
 - [x] **Structured JSON Output (Non-Chatbot)**: Strictly non-conversational. Returns rigid, validated JSON recipe data structures rather than chat messages.
-- [x] **Deployment-Ready Serverless Architecture**: Fully encapsulated in `api/recipe.js` with `vercel.json` rewrites and 60-second execution caps.
+- [x] **Monolithic Zero-Dependency Serverless Architecture**: Fully self-contained single-file handler in `api/recipe.js` with `vercel.json` rewrites, top-level crash shields, and 60-second execution caps to prevent Vercel 502 errors.
 - [x] **Comprehensive Error Handling**: Robust recovery for HTTP 503s, 60-second timeouts, malformed responses, client disconnections, and Pacific midnight daily quota resets.
 
 ---
@@ -20,7 +22,7 @@ A production-ready full-stack culinary assistant that transforms arbitrary pantr
 - **Scalable Servings**: Non-destructive mathematical scaling from 1 to 12 servings. Qualitative ingredients ("to taste") and singular/plural units (`1 piece` vs `3 pieces`, `1 cup` vs `2 cups`) remain consistent.
 - **Context-Aware Ingredient Swaps**: Generates 0 to 3 simple 1-to-1 substitutions with instruction overrides that require no undeclared ingredients.
 - **Checkable Cooking Steps**: Interactive progress tracking with real-time percentage progress bar and instruction highlight tokens.
-- **Culinary Visual Experience**: Deep culinary food background with 60% visibility overlay (`rgba(0,0,0,0.6)`), glassmorphic cards, plated dish cover photos, and custom culinary iconography.
+- **Visual Design System**: Deep culinary food background with 60% visibility overlay (`rgba(0,0,0,0.6)`), glassmorphic card overlays, responsive contrast, and custom culinary SVG iconography.
 - **"Serve & Enjoy" Completion Flow**: Step completion activates a dedicated finish panel with options to review the current recipe or start a new creation.
 - **Resilient Daily Quota Management**: Detects Google Gemini free-tier daily caps, computes the scheduled midnight reset in `America/Los_Angeles` (accounting for DST), and renders a localized countdown notice ("Our kitchen opens again in X hours and Y minutes").
 
@@ -95,6 +97,12 @@ npm run build
    - Output Directory: `dist`
 3. Add `GEMINI_API_KEY` in **Project Settings > Environment Variables**.
 4. Deploy. Vercel automatically exposes `api/recipe.js` as a serverless endpoint and routes `/api/recipe` based on `vercel.json`.
+
+### Monolithic Serverless Design (`api/recipe.js`)
+To prevent deployment errors such as Vercel lambda module resolution failures and unhandled 502 Bad Gateway crashes:
+- **Zero Relative Dependencies**: All runtime validation schemas, business rules, quota mathematics, and provider communications are unified into a self-contained single-file handler.
+- **Top-Level Crash Shield**: The serverless entry point wraps execution in a defensive `try...catch` block that converts runtime exceptions into JSON error envelopes (`HTTP 500`) with stack traces instead of letting Vercel emit opaque HTML 502 pages.
+- **Extended Execution Budget**: Configured with `export const config = { maxDuration: 60 }` to avoid premature gateway timeouts during deep model generation.
 
 ---
 

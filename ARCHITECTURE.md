@@ -58,11 +58,15 @@ Fridge-to-Recipe is architected as a decoupled, serverless full-stack web applic
    - Rejects payloads exceeding 16 KiB to prevent memory exhaustion.
    - Extracts and sanitizes prompt using `RequestPayloadSchema`.
    - Dispatches a structured call to the Gemini Generative Language API using the server-side `GEMINI_API_KEY`.
-5. **Provider Response & Error Inspection**:
+5. **Provider Invocation, Normalization & Fallback**:
+   - The handler invokes `callGeminiRecipe()`, where `normalizeModelName()` inspects the requested model name. Any legacy or deprecated models (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-3.5-flash`) are automatically normalized to `gemini-3.5-flash-lite`.
+   - Requests are dispatched with `maxOutputTokens: 4096` and strict schema enforcement.
+   - If Google returns an HTTP 404 (model not found) or HTTP 503 (high demand spike), the provider automatically retries with a fallback model (`gemini-flash-lite-latest` or `gemini-3.5-flash-lite`).
    - If Google returns an HTTP 429: extracts quota metadata. If it is a daily limit, computes the next Pacific Midnight ISO timestamp (`America/Los_Angeles`) and sets `retryable: false`.
-   - If Google returns an HTTP 503 or unexpected error: dumps raw error payload to stderr via `console.error(rawError)` and returns an `INTERNAL_ERROR` envelope.
-6. **Zod Validation & Business Rules (`shared/contract.js`)**:
-   - Parses the JSON output against `SuccessResponseSchema` or `CannotGenerateSchema`.
+   - If upstream errors persist, the actual provider error message is surfaced in an `INTERNAL_ERROR` envelope rather than masked.
+6. **Pre-Validation Sanitization & Contract Enforcement**:
+   - Before schema parsing, raw JSON output passes through `sanitizeRecipePayload()`. This corrects common LLM syntax variances (such as underscore IDs `rec_1` → `recipe-1`, `ing_1` → `ing-1`, `step_1` → `step-1`), strips extraneous `displayText` on numeric ingredients, cleans units, and reconciles `{ing:...}` tokens.
+   - Parses the sanitized payload against `SuccessResponseSchema` or `CannotGenerateSchema`.
    - Executes `validateRecipeBusinessRules`: verifies identifier formats, ensures every `{ing:...}` token in instructions is declared in `ingredientReferences`, and confirms 1-to-1 swap validity.
 7. **Client Rendering & Auto-Scroll**:
    - The client hook parses the envelope.
@@ -246,7 +250,7 @@ Fridge-to-Recipe is architected as a decoupled, serverless full-stack web applic
   "status": "error",
   "error": {
     "code": "INTERNAL_ERROR",
-    "message": "AI service is currently unavailable. Please try again.",
+    "message": "AI service error: models/gemini-1.5-flash is not found for API version v1beta.",
     "retryable": true
   }
 }
@@ -265,14 +269,24 @@ Fridge-to-Recipe is architected as a decoupled, serverless full-stack web applic
 - **Client Limit**: `useRecipeGenerator.js` maintains a 65,000 ms timeout to ensure graceful error display if network transport stalls.
 - **Client Disconnection**: The backend listens to `res.on('close')` and immediately aborts the active Google Gemini request if the user navigates away or cancels, avoiding unnecessary API consumption.
 
-### Schema Validation & Anti-Hallucination
-- Gemini Flash is invoked with a rigid JSON schema enforcing type definitions for ingredients, units, quantities, and steps.
-- The server validates the raw response against `SuccessResponseSchema` before sending it to the client.
-- `validateRecipeBusinessRules` checks:
-  1. Ingredient reference tokens `{ing:id}` match existing ingredient IDs.
-  2. Swap targets point to real ingredients and swaps do not introduce unlisted requirements.
-  3. No duplicate step or ingredient identifiers exist.
-- If any check fails, the application returns a structured error envelope rather than crashing the client.
+### AI Model Normalization & Fallback Strategy
+- **Deprecation Protection**: In Google's `v1beta` endpoint, legacy model identifiers like `gemini-1.5-flash` return HTTP 404, while `gemini-3.5-flash` frequently experiences tier quota exhaustion.
+- **Automatic Normalization (`normalizeModelName`)**: Normalizes any legacy or deprecated model name (`gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-3.5-flash`) to the active, high-throughput `gemini-3.5-flash-lite`.
+- **Runtime Capacity Fallback**: If a live request receives an HTTP 404 or transient HTTP 503 (demand spike), the system automatically retries with a secondary candidate (`gemini-flash-lite-latest` or `gemini-3.5-flash-lite`).
+- **Clean Configuration**: Removed `thinkingConfig: { thinkingBudget: 0 }`, which triggers upstream `400 INVALID_ARGUMENT` on flash-lite models.
+
+### Pre-Validation Payload Sanitizer (`sanitizeRecipePayload`)
+LLMs often generate formatting anomalies that violate strict TypeScript/Zod schemas even when the culinary logic is sound:
+1. **Identifier Normalization**: Converts underscore identifiers into hyphenated lowercase strings (`rec_1` → `recipe-1`, `ing_1` → `ing-1`, `step_1` → `step-1`, `swap_1` → `swap-1`).
+2. **Token Reconciliation**: Maps all `{ing:...}` tokens in step instructions and swap overrides to their newly normalized ingredient IDs.
+3. **Contract Constraints**: Forces `displayText: null` on numeric ingredients (preventing Zod superRefine rejections) and ensures `baseAmount: null` and `unit: null` on non-numeric ingredients.
+4. **Step Reference Synchronization**: Ensures all `{ing:...}` tokens appear in the step's `ingredientReferences` array, satisfying business rule consistency.
+
+### Monolithic Zero-Dependency Serverless Architecture (`api/recipe.js`)
+To eliminate deployment failures on Vercel:
+- **Single-File Encapsulation**: The entire serverless lambda is contained in `api/recipe.js` with zero relative module imports. This prevents file-resolution bugs during Vercel's build-and-bundle phase.
+- **Top-Level Crash Shield**: The handler wraps execution in a comprehensive `try...catch` block. If a runtime crash occurs, it returns an explicit `HTTP 500` JSON payload with error details and stack traces, preventing Vercel from emitting an unhelpful HTML `502 Bad Gateway` page.
+- **Extended Serverless Timeout**: Exports `config = { maxDuration: 60 }` to ensure Vercel allows up to 60 seconds execution time.
 
 ### Quota & Rate Limit Grace
 - When Google returns a `429 RESOURCE_EXHAUSTED`, the backend inspects `QuotaFailure` violation metadata.
