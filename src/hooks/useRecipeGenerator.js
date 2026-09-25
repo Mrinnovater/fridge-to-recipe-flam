@@ -32,6 +32,7 @@ export function processRecipeResponse(payload, currentRecipe = null) {
         cannotGenerateInfo: null
       };
     }
+    console.error("Recipe API error payload:", payload);
     return {
       status: "error",
       errorInfo: parsedError.success
@@ -171,6 +172,10 @@ export function useRecipeGenerator() {
         return;
       }
 
+      if (!response.ok || payload?.status === "error" || !payload) {
+        console.error("Recipe API response status:", response.status, "payload:", payload);
+      }
+
       const processed = processRecipeResponse(payload, recipe);
       setStatus(processed.status);
       setErrorInfo(processed.errorInfo);
@@ -188,6 +193,7 @@ export function useRecipeGenerator() {
       if (activeRequestIdRef.current !== currentRequestId) {
         return;
       }
+      console.error("Recipe API request exception:", err);
       if (err.name === "AbortError") {
         setStatus("error");
         setErrorInfo({

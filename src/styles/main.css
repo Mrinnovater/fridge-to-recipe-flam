@@ -335,6 +335,33 @@ html[data-theme="dark"] body {
   opacity: 0.8;
 }
 
+[data-theme="dark"] .kitchen-textarea,
+[data-theme="dark"] textarea,
+[data-theme="dark"] input {
+  background-color: #1e2923;
+  color: #ffffff;
+  border-color: var(--border-strong);
+}
+
+[data-theme="dark"] .kitchen-textarea::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #9fb0a3;
+  opacity: 0.85;
+}
+
+[data-theme="dark"] .kitchen-textarea:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(95, 168, 125, 0.25);
+}
+
+[data-theme="dark"] .kitchen-textarea:disabled,
+[data-theme="dark"] textarea:disabled {
+  background-color: #151d19;
+  color: #75867a;
+  opacity: 0.7;
+}
+
 .field-meta {
   display: flex;
   justify-content: space-between;
