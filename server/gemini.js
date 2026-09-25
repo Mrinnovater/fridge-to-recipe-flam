@@ -4,7 +4,8 @@ import {
   SuccessResponseSchema,
   CannotGenerateSchema,
   validateRecipeBusinessRules,
-  createErrorResponse
+  createErrorResponse,
+  extractIngredientTokens
 } from "../shared/contract.js";
 
 export const PROVIDER_RESPONSE_SCHEMA = {
@@ -282,6 +283,148 @@ export function getNextPacificMidnightIso(refDate = new Date()) {
   throw new Error("Unable to determine Pacific midnight");
 }
 
+export function normalizeModelName(model) {
+  if (!model || typeof model !== "string") {
+    return "gemini-3.5-flash-lite";
+  }
+  const trimmed = model.trim();
+  if (
+    trimmed === "gemini-1.5-flash" ||
+    trimmed === "gemini-1.5-pro" ||
+    trimmed === "gemini-2.0-flash" ||
+    trimmed === "gemini-2.5-flash" ||
+    trimmed === "gemini-3.5-flash"
+  ) {
+    return "gemini-3.5-flash-lite";
+  }
+  return trimmed;
+}
+
+export function sanitizeRecipePayload(parsed) {
+  if (!parsed || parsed.status !== "success" || !parsed.recipe || typeof parsed.recipe !== "object") {
+    return parsed;
+  }
+  const r = parsed.recipe;
+  if (typeof r.id === "string") {
+    r.id = r.id.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
+  }
+  if (!r.id || !/^[a-z0-9-]+$/.test(r.id)) {
+    r.id = "recipe-1";
+  }
+
+  const idMap = new Map();
+  if (Array.isArray(r.ingredients)) {
+    r.ingredients.forEach((ing, i) => {
+      if (!ing || typeof ing !== "object") return;
+      const rawId = typeof ing.id === "string" ? ing.id.trim() : "";
+      const cleaned = rawId.replace(/^ing[-_]?/i, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const newId = `ing-${cleaned || i + 1}`;
+      if (rawId) {
+        idMap.set(rawId, newId);
+      }
+      idMap.set(`ing_${i + 1}`, newId);
+      idMap.set(`ing-${i + 1}`, newId);
+      ing.id = newId;
+
+      if (ing.quantityType === "numeric") {
+        ing.displayText = null;
+        if (typeof ing.baseAmount !== "number" || ing.baseAmount <= 0 || !Number.isFinite(ing.baseAmount)) {
+          ing.baseAmount = 1;
+        }
+        if (!ing.unit || !ALLOWED_UNITS.includes(ing.unit)) {
+          ing.unit = "pieces";
+        }
+      } else {
+        ing.quantityType = "non_numeric";
+        ing.baseAmount = null;
+        ing.unit = null;
+        if (!ing.displayText || typeof ing.displayText !== "string" || !ing.displayText.trim()) {
+          ing.displayText = "to taste";
+        }
+      }
+    });
+  }
+
+  const stepMap = new Map();
+  if (Array.isArray(r.steps)) {
+    r.steps.forEach((step, i) => {
+      if (!step || typeof step !== "object") return;
+      const rawId = typeof step.id === "string" ? step.id.trim() : "";
+      const cleaned = rawId.replace(/^step[-_]?/i, "").replace(/[^0-9]/g, "");
+      const newId = `step-${cleaned || i + 1}`;
+      if (rawId) {
+        stepMap.set(rawId, newId);
+      }
+      stepMap.set(`step_${i + 1}`, newId);
+      stepMap.set(`step-${i + 1}`, newId);
+      step.id = newId;
+      step.stepNumber = i + 1;
+
+      if (typeof step.instruction === "string") {
+        for (const [oldId, mappedId] of idMap.entries()) {
+          step.instruction = step.instruction.replaceAll(`{ing:${oldId}}`, `{ing:${mappedId}}`);
+        }
+      }
+
+      const extractedTokens = extractIngredientTokens(step.instruction || "");
+      const validIngredientIds = new Set((r.ingredients || []).map((ing) => ing.id));
+      const refSet = new Set(
+        Array.isArray(step.ingredientReferences)
+          ? step.ingredientReferences.map((ref) => idMap.get(ref) || (typeof ref === "string" ? ref.replace(/^ing_/, "ing-") : ref)).filter((ref) => validIngredientIds.has(ref))
+          : []
+      );
+      for (const token of extractedTokens) {
+        if (validIngredientIds.has(token)) {
+          refSet.add(token);
+        }
+      }
+      step.ingredientReferences = Array.from(refSet);
+    });
+  }
+
+  if (Array.isArray(r.swaps)) {
+    const validStepIds = new Set((r.steps || []).map((s) => s.id));
+    const validIngIds = new Set((r.ingredients || []).map((ing) => ing.id));
+    const seenSwapIds = new Set();
+
+    r.swaps = r.swaps.filter((swap, i) => {
+      if (!swap || typeof swap !== "object") return false;
+      const rawId = typeof swap.id === "string" ? swap.id.trim() : "";
+      const cleaned = rawId.replace(/^swap[-_]?/i, "").replace(/[^0-9]/g, "");
+      const newId = `swap-${cleaned || i + 1}`;
+      swap.id = newId;
+      if (seenSwapIds.has(newId)) return false;
+      seenSwapIds.add(newId);
+
+      const targetId = idMap.get(swap.targetIngredientId) || (typeof swap.targetIngredientId === "string" ? swap.targetIngredientId.replace(/^ing_/, "ing-") : "");
+      if (!validIngIds.has(targetId)) return false;
+      swap.targetIngredientId = targetId;
+
+      if (Array.isArray(swap.stepOverrides)) {
+        const seenOverrides = new Set();
+        swap.stepOverrides = swap.stepOverrides.filter((ov) => {
+          if (!ov || typeof ov !== "object") return false;
+          const mappedStepId = stepMap.get(ov.stepId) || (typeof ov.stepId === "string" ? ov.stepId.replace(/^step_/, "step-") : "");
+          if (!validStepIds.has(mappedStepId) || seenOverrides.has(mappedStepId)) return false;
+          seenOverrides.add(mappedStepId);
+          ov.stepId = mappedStepId;
+          if (typeof ov.instruction === "string") {
+            for (const [oldId, mappedId] of idMap.entries()) {
+              ov.instruction = ov.instruction.replaceAll(`{ing:${oldId}}`, `{ing:${mappedId}}`);
+            }
+          }
+          return true;
+        });
+      } else {
+        swap.stepOverrides = [];
+      }
+      return true;
+    });
+  }
+
+  return parsed;
+}
+
 export async function callGeminiRecipe(prompt, options = {}) {
   const apiKey = options.apiKey !== undefined ? options.apiKey : (process.env.GEMINI_API_KEY || CONFIG.GEMINI_API_KEY);
   if (!apiKey || apiKey.trim() === "" || apiKey === "your_actual_key_here") {
@@ -296,7 +439,8 @@ export async function callGeminiRecipe(prompt, options = {}) {
     };
   }
 
-  const model = options.model || CONFIG.GEMINI_MODEL;
+  const rawModel = options.model || CONFIG.GEMINI_MODEL;
+  const model = normalizeModelName(rawModel);
   const timeoutMs = options.timeoutMs || CONFIG.GEMINI_TIMEOUT_MS;
   const fetchFn = options.fetchFn || globalThis.fetch;
 
@@ -335,10 +479,7 @@ export async function callGeminiRecipe(prompt, options = {}) {
       responseMimeType: "application/json",
       responseSchema: PROVIDER_RESPONSE_SCHEMA,
       temperature: 0.1,
-      maxOutputTokens: 4096,
-      thinkingConfig: {
-        thinkingBudget: 0
-      }
+      maxOutputTokens: 4096
     }
   };
 
@@ -367,6 +508,16 @@ export async function callGeminiRecipe(prompt, options = {}) {
       console.error(rawError);
       const errorObj = rawError.error || {};
       console.warn(`[Gemini Provider] status=${response.status} code=${errorObj.status || "UNKNOWN"} duration=${duration}ms`);
+
+      if (!options.isFallback && (!options.fetchFn || options.fetchFn === globalThis.fetch) && (response.status === 404 || response.status === 503)) {
+        const fallbackModel = model === "gemini-3.5-flash-lite" ? "gemini-flash-lite-latest" : "gemini-3.5-flash-lite";
+        console.warn(`[Gemini Provider] Retrying with fallback model: ${fallbackModel}`);
+        return callGeminiRecipe(prompt, {
+          ...options,
+          model: fallbackModel,
+          isFallback: true
+        });
+      }
 
       if (
         response.status === 400 &&
@@ -432,11 +583,15 @@ export async function callGeminiRecipe(prompt, options = {}) {
           payload: createErrorResponse("PROVIDER_QUOTA", errorMessage, true)
         };
       }
+      const rawMessage = errorObj.message || (typeof rawError === "string" ? rawError : "");
+      const errorMsg = rawMessage
+        ? `AI service error: ${rawMessage}`
+        : "AI service is currently unavailable. Please try again.";
       return {
         httpStatus: 502,
         payload: createErrorResponse(
           "INTERNAL_ERROR",
-          "AI service is currently unavailable. Please try again.",
+          errorMsg,
           true
         )
       };
@@ -528,6 +683,7 @@ export async function callGeminiRecipe(prompt, options = {}) {
     }
 
     if (parsedResult.status === "success") {
+      parsedResult = sanitizeRecipePayload(parsedResult);
       const validatedSuccess = SuccessResponseSchema.safeParse(parsedResult);
       if (!validatedSuccess.success) {
         return {

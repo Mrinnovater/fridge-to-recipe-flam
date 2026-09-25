@@ -31,11 +31,11 @@ Fridge-to-Recipe is architected as a decoupled, serverless full-stack web applic
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   Google Generative AI                      │
-│                  (gemini-3.5-flash)                         │
+│                (gemini-3.5-flash-lite)                      │
 │                                                             │
 │   • responseMimeType: application/json                      │
 │   • responseSchema: PROVIDER_RESPONSE_SCHEMA                │
-│   • thinkingBudget: 0 (sub-second deterministic output)     │
+│   • Sub-second deterministic JSON output                    │
 └─────────────────────────────────────────────────────────────┘
 ```
 

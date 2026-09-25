@@ -17,7 +17,9 @@ if (fs.existsSync(rootEnvPath)) {
 export const CONFIG = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 3001,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
-  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-3.5-flash",
+  GEMINI_MODEL: process.env.GEMINI_MODEL && !["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-3.5-flash"].includes(process.env.GEMINI_MODEL.trim())
+    ? process.env.GEMINI_MODEL.trim()
+    : "gemini-3.5-flash-lite",
   GEMINI_TIMEOUT_MS: process.env.GEMINI_TIMEOUT_MS ? parseInt(process.env.GEMINI_TIMEOUT_MS, 10) : 60000,
   MAX_BODY_BYTES: 16 * 1024,
   MAX_PROMPT_CHARS: 2000,

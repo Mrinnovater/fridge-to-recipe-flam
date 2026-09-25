@@ -48,7 +48,7 @@ Populate `.env` with your Google Gemini API key:
 ```env
 PORT=3001
 GEMINI_API_KEY=your_actual_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 GEMINI_TIMEOUT_MS=60000
 ```
 
@@ -79,7 +79,7 @@ npm run build
 | Variable | Scope | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | Local (`.env`) & Vercel Dashboard | Google Gemini API Key (*Mandatory*) |
-| `GEMINI_MODEL` | Local (`.env`) & Vercel Dashboard | Model name (default: `gemini-3.5-flash`) |
+| `GEMINI_MODEL` | Local (`.env`) & Vercel Dashboard | Model name (default: `gemini-3.5-flash-lite`) |
 | `GEMINI_TIMEOUT_MS` | Local (`.env`) & Vercel Dashboard | Backend execution timeout in milliseconds (default: `60000`) |
 | `PORT` | Local only | Local Node HTTP server port (default: `3001`) |
 
