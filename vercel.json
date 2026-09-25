@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/recipe.js": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/recipe",
+      "destination": "/api/recipe.js"
+    }
+  ]
+}

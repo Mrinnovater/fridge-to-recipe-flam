@@ -1,0 +1,117 @@
+{
+  "id": "rcp-9f8a2b",
+  "title": "Crispy Tofu and Spinach Scramble",
+  "description": "A quick skillet scramble featuring golden tofu cubes, scrambled eggs, and wilted spinach.",
+  "baseServings": 2,
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 15,
+  "assumptions": [
+    "Half a block of firm tofu estimated as 200 g based on a standard 400 g package.",
+    "Cooking oil and salt are not assumed to be in the pantry and are listed as additional required ingredients."
+  ],
+  "ingredients": [
+    {
+      "id": "ing-1",
+      "name": "firm tofu",
+      "type": "supplied",
+      "quantityType": "numeric",
+      "baseAmount": 200,
+      "unit": "g",
+      "displayText": null
+    },
+    {
+      "id": "ing-2",
+      "name": "eggs",
+      "type": "supplied",
+      "quantityType": "numeric",
+      "baseAmount": 3,
+      "unit": "pieces",
+      "displayText": null
+    },
+    {
+      "id": "ing-3",
+      "name": "fresh spinach",
+      "type": "supplied",
+      "quantityType": "numeric",
+      "baseAmount": 100,
+      "unit": "g",
+      "displayText": null
+    },
+    {
+      "id": "ing-4",
+      "name": "soy sauce",
+      "type": "supplied",
+      "quantityType": "numeric",
+      "baseAmount": 1,
+      "unit": "tbsp",
+      "displayText": null
+    },
+    {
+      "id": "ing-5",
+      "name": "cooking oil",
+      "type": "additional_required",
+      "quantityType": "numeric",
+      "baseAmount": 1,
+      "unit": "tbsp",
+      "displayText": null
+    },
+    {
+      "id": "ing-6",
+      "name": "salt",
+      "type": "additional_required",
+      "quantityType": "non_numeric",
+      "baseAmount": null,
+      "unit": null,
+      "displayText": "to taste"
+    }
+  ],
+  "swaps": [
+    {
+      "id": "swap-1",
+      "targetIngredientId": "ing-1",
+      "replacementName": "canned chickpeas (drained)",
+      "type": "additional_required",
+      "quantityType": "numeric",
+      "baseAmount": 240,
+      "unit": "g",
+      "stepOverrides": [
+        {
+          "stepId": "step-1",
+          "instruction": "Rinse and drain {ing:ing-1}, then pat dry thoroughly with a clean kitchen towel."
+        }
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-1",
+      "stepNumber": 1,
+      "instruction": "Cut {ing:ing-1} into bite-sized cubes and pat dry with a kitchen towel.",
+      "ingredientReferences": ["ing-1"]
+    },
+    {
+      "id": "step-2",
+      "stepNumber": 2,
+      "instruction": "Heat {ing:ing-5} in a skillet over medium heat, add {ing:ing-1}, and cook until golden on the outside.",
+      "ingredientReferences": ["ing-5", "ing-1"]
+    },
+    {
+      "id": "step-3",
+      "stepNumber": 3,
+      "instruction": "Beat {ing:ing-2} lightly in a small bowl, pour into the skillet around {ing:ing-1}, and stir gently until soft curds form.",
+      "ingredientReferences": ["ing-2", "ing-1"]
+    },
+    {
+      "id": "step-4",
+      "stepNumber": 4,
+      "instruction": "Toss in {ing:ing-3} and drizzle with {ing:ing-4}. Stir until spinach wilts completely.",
+      "ingredientReferences": ["ing-3", "ing-4"]
+    },
+    {
+      "id": "step-5",
+      "stepNumber": 5,
+      "instruction": "Remove from heat, season with {ing:ing-6}, and serve warm.",
+      "ingredientReferences": ["ing-6"]
+    }
+  ]
+}
