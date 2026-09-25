@@ -62,14 +62,8 @@ export function RecipeWorkspace({ recipe, headingRef, onMakeAnotherRecipe }) {
 
   return (
     <article className="recipe-workspace-card">
-      <div className="recipe-visual-masthead" role="img" aria-label="Culinary recipe showcase">
-        <img
-          src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"
-          alt="Freshly prepared culinary meal"
-          className="masthead-bg-image"
-          loading="lazy"
-        />
-        <div className="masthead-gradient-overlay" />
+      <div className="recipe-visual-masthead" aria-label="Culinary recipe showcase">
+        <div className="masthead-gradient-glow" aria-hidden="true" />
         <div className="masthead-content">
           <div className="masthead-icon-badge" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="masthead-svg">
