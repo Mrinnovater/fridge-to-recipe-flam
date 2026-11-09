@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://fridge-to-recipe-byshiva.vercel.app/">
-    <img src="https://img.shields.io/badge/🚀_Live_Demo-Explore_Now-2ea44f?style=for-the-badge" alt="Live Demo" />
+    <img src="https://img.shields.io/badge/🚀_Live_Demo-Explore_Now-2ea44f?style=for-the-badge" target="_blank" alt="Live Demo" />
   </a>
 </p>
 
