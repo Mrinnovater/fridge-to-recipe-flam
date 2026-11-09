@@ -1,7 +1,12 @@
 # Fridge-to-Recipe: AI-Powered Culinary Assistant
 
-A production-ready full-stack culinary assistant that transforms arbitrary pantry ingredients into structured, step-by-step cooking recipes. Built with React 18, Vite, and Vercel Serverless Functions powered by Google Gemini Flash.
+<p align="center">
+  <a href="https://fridge-to-recipe-byshiva.vercel.app/">
+    <img src="https://img.shields.io/badge/🚀_Live_Demo-Explore_Now-2ea44f?style=for-the-badge" alt="Live Demo" />
+  </a>
+</p>
 
+A production-ready full-stack culinary assistant that transforms arbitrary pantry ingredients into structured, step-by-step cooking recipes. Built with React 18, Vite, and Vercel Serverless Functions powered by Google Gemini Flash.
 ---
 
 ## 1. Core Requirements Checklist
